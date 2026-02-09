@@ -4,21 +4,35 @@
 <title>Spati 4 You - Inventory</title>
 <style>
 body{font-family:Arial;background:#f2f4f7;padding:20px}
-h1{text-align:center}
+h1{text-align:center;color:#ff2fa6}
+h2{text-align:center}
 input,button{padding:8px;margin:4px}
 table{width:100%;border-collapse:collapse;margin-top:10px}
 th,td{border:1px solid #aaa;padding:6px;text-align:center}
 .low{background:#ffb3b3}
 #history{max-height:150px;overflow:auto;border:1px solid #aaa;padding:5px}
+#app{display:none}
 </style>
 </head>
 
 <body>
-<h1>Spati 4 You - Inventory Manager</h1>
+
+<div id="login">
+<h1>Spati 4 You</h1>
+<h2>Hauptstrasse Branch</h2>
+<input id="user" placeholder="Username"><br>
+<input id="pass" type="password" placeholder="Password"><br>
+<button onclick="login()">Login</button>
+</div>
+
+<div id="app">
+<h1>Spati 4 You</h1>
 
 <input id="item" placeholder="Item Name">
 <input id="qty" type="number" placeholder="Quantity">
 <input id="limit" type="number" placeholder="Low Stock Limit">
+<input id="barcode" placeholder="Barcode">
+<button onclick="scan()">📷 Scan</button>
 <button onclick="addItem()">Add / Update</button>
 
 <br><br>
@@ -28,7 +42,7 @@ th,td{border:1px solid #aaa;padding:6px;text-align:center}
 <table>
 <thead>
 <tr>
-<th>Item</th><th>Qty</th><th>Low Limit</th><th>IN</th><th>OUT</th><th>Delete</th>
+<th>Item</th><th>Qty</th><th>Limit</th><th>Barcode</th><th>IN</th><th>OUT</th><th>Delete</th>
 </tr>
 </thead>
 <tbody id="list"></tbody>
@@ -36,10 +50,21 @@ th,td{border:1px solid #aaa;padding:6px;text-align:center}
 
 <h3>History Log</h3>
 <div id="history"></div>
+</div>
 
 <script>
+const USER="admin";
+const PASS="1234";
+
 let inventory=JSON.parse(localStorage.getItem("inv"))||[];
 let history=JSON.parse(localStorage.getItem("hist"))||[];
+
+function login(){
+if(user.value==USER && pass.value==PASS){
+loginDiv.style.display="none";
+app.style.display="block";
+}else alert("Wrong Login");
+}
 
 function save(){
 localStorage.setItem("inv",JSON.stringify(inventory));
@@ -50,9 +75,12 @@ function addItem(){
 let name=item.value;
 let q=Number(qty.value);
 let l=Number(limit.value);
-let f=inventory.find(i=>i.name==name);
+let b=barcode.value;
+
+let f=inventory.find(i=>i.barcode==b || i.name==name);
 if(f){f.qty+=q;}
-else{inventory.push({name,qty:q,limit:l});}
+else inventory.push({name,qty:q,limit:l,barcode:b});
+
 history.unshift(`${new Date().toLocaleString()} Added ${q} ${name}`);
 save();render();
 }
@@ -66,13 +94,14 @@ rows+=`<tr class="${low}">
 <td>${i.name}</td>
 <td>${i.qty}</td>
 <td>${i.limit}</td>
+<td>${i.barcode||""}</td>
 <td><button onclick="instock(${n})">+</button></td>
 <td><button onclick="outstock(${n})">-</button></td>
 <td><button onclick="del(${n})">X</button></td>
 </tr>`;
 });
 list.innerHTML=rows;
-historyDiv();
+historyBox();
 }
 
 function instock(n){
@@ -80,6 +109,7 @@ inventory[n].qty++;
 history.unshift(`${new Date().toLocaleString()} IN ${inventory[n].name}`);
 save();render();
 }
+
 function outstock(n){
 if(inventory[n].qty>0){
 inventory[n].qty--;
@@ -87,23 +117,47 @@ history.unshift(`${new Date().toLocaleString()} OUT ${inventory[n].name}`);
 }
 save();render();
 }
+
 function del(n){
 history.unshift(`${new Date().toLocaleString()} Deleted ${inventory[n].name}`);
 inventory.splice(n,1);
 save();render();
 }
 
-function historyDiv(){
-historyBox.innerHTML=history.slice(0,20).join("<br>");
+function historyBox(){
+history.innerHTML=history.slice(0,20).join("<br>");
 }
 
 function exportCSV(){
-let csv="Item,Qty,Limit\n";
-inventory.forEach(i=>csv+=`${i.name},${i.qty},${i.limit}\n`);
+let csv="Item,Qty,Limit,Barcode\n";
+inventory.forEach(i=>csv+=`${i.name},${i.qty},${i.limit},${i.barcode}\n`);
 let a=document.createElement("a");
 a.href="data:text/csv;charset=utf-8,"+encodeURIComponent(csv);
 a.download="spati_inventory.csv";
 a.click();
+}
+
+// Barcode Scan
+async function scan(){
+if(!("BarcodeDetector" in window)){
+alert("Barcode scan not supported on this browser");
+return;
+}
+const detector=new BarcodeDetector();
+const stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"}});
+const video=document.createElement("video");
+video.srcObject=stream;
+video.play();
+
+setTimeout(async ()=>{
+const canvas=document.createElement("canvas");
+canvas.width=video.videoWidth;
+canvas.height=video.videoHeight;
+canvas.getContext("2d").drawImage(video,0,0);
+const codes=await detector.detect(canvas);
+if(codes.length) barcode.value=codes[0].rawValue;
+stream.getTracks().forEach(t=>t.stop());
+},2000);
 }
 
 render();
@@ -111,3 +165,4 @@ render();
 
 </body>
 </html>
+
