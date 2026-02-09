@@ -10,7 +10,7 @@ input,button{padding:8px;margin:4px}
 table{width:100%;border-collapse:collapse;margin-top:10px}
 th,td{border:1px solid #aaa;padding:6px;text-align:center}
 .low{background:#ffb3b3}
-#history{max-height:150px;overflow:auto;border:1px solid #aaa;padding:5px}
+#historyBox{max-height:150px;overflow:auto;border:1px solid #aaa;padding:5px}
 #app{display:none}
 </style>
 </head>
@@ -49,7 +49,7 @@ th,td{border:1px solid #aaa;padding:6px;text-align:center}
 </table>
 
 <h3>History Log</h3>
-<div id="history"></div>
+<div id="historyBox"></div>
 </div>
 
 <script>
@@ -60,10 +60,13 @@ let inventory=JSON.parse(localStorage.getItem("inv"))||[];
 let history=JSON.parse(localStorage.getItem("hist"))||[];
 
 function login(){
-if(user.value==USER && pass.value==PASS){
-loginDiv.style.display="none";
-app.style.display="block";
-}else alert("Wrong Login");
+  if(document.getElementById("user").value===USER &&
+     document.getElementById("pass").value===PASS){
+      document.getElementById("login").style.display="none";
+      document.getElementById("app").style.display="block";
+  } else {
+      alert("Wrong username or password");
+  }
 }
 
 function save(){
@@ -101,7 +104,7 @@ rows+=`<tr class="${low}">
 </tr>`;
 });
 list.innerHTML=rows;
-historyBox();
+historyBox.innerHTML=history.slice(0,20).join("<br>");
 }
 
 function instock(n){
@@ -124,10 +127,6 @@ inventory.splice(n,1);
 save();render();
 }
 
-function historyBox(){
-history.innerHTML=history.slice(0,20).join("<br>");
-}
-
 function exportCSV(){
 let csv="Item,Qty,Limit,Barcode\n";
 inventory.forEach(i=>csv+=`${i.name},${i.qty},${i.limit},${i.barcode}\n`);
@@ -137,7 +136,6 @@ a.download="spati_inventory.csv";
 a.click();
 }
 
-// Barcode Scan
 async function scan(){
 if(!("BarcodeDetector" in window)){
 alert("Barcode scan not supported on this browser");
@@ -165,4 +163,5 @@ render();
 
 </body>
 </html>
+
 
