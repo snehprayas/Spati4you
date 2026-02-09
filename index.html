@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Spati 4 You - Inventory</title>
+<style>
+body{font-family:Arial;background:#f2f4f7;padding:20px}
+h1{text-align:center}
+input,button{padding:8px;margin:4px}
+table{width:100%;border-collapse:collapse;margin-top:10px}
+th,td{border:1px solid #aaa;padding:6px;text-align:center}
+.low{background:#ffb3b3}
+#history{max-height:150px;overflow:auto;border:1px solid #aaa;padding:5px}
+</style>
+</head>
+
+<body>
+<h1>Spati 4 You - Inventory Manager</h1>
+
+<input id="item" placeholder="Item Name">
+<input id="qty" type="number" placeholder="Quantity">
+<input id="limit" type="number" placeholder="Low Stock Limit">
+<button onclick="addItem()">Add / Update</button>
+
+<br><br>
+<input id="search" placeholder="Search Item" onkeyup="render()">
+<button onclick="exportCSV()">Export Excel</button>
+
+<table>
+<thead>
+<tr>
+<th>Item</th><th>Qty</th><th>Low Limit</th><th>IN</th><th>OUT</th><th>Delete</th>
+</tr>
+</thead>
+<tbody id="list"></tbody>
+</table>
+
+<h3>History Log</h3>
+<div id="history"></div>
+
+<script>
+let inventory=JSON.parse(localStorage.getItem("inv"))||[];
+let history=JSON.parse(localStorage.getItem("hist"))||[];
+
+function save(){
+localStorage.setItem("inv",JSON.stringify(inventory));
+localStorage.setItem("hist",JSON.stringify(history));
+}
+
+function addItem(){
+let name=item.value;
+let q=Number(qty.value);
+let l=Number(limit.value);
+let f=inventory.find(i=>i.name==name);
+if(f){f.qty+=q;}
+else{inventory.push({name,qty:q,limit:l});}
+history.unshift(`${new Date().toLocaleString()} Added ${q} ${name}`);
+save();render();
+}
+
+function render(){
+let s=search.value.toLowerCase();
+let rows="";
+inventory.filter(i=>i.name.toLowerCase().includes(s)).forEach((i,n)=>{
+let low=i.qty<=i.limit?"low":"";
+rows+=`<tr class="${low}">
+<td>${i.name}</td>
+<td>${i.qty}</td>
+<td>${i.limit}</td>
+<td><button onclick="instock(${n})">+</button></td>
+<td><button onclick="outstock(${n})">-</button></td>
+<td><button onclick="del(${n})">X</button></td>
+</tr>`;
+});
+list.innerHTML=rows;
+historyDiv();
+}
+
+function instock(n){
+inventory[n].qty++;
+history.unshift(`${new Date().toLocaleString()} IN ${inventory[n].name}`);
+save();render();
+}
+function outstock(n){
+if(inventory[n].qty>0){
+inventory[n].qty--;
+history.unshift(`${new Date().toLocaleString()} OUT ${inventory[n].name}`);
+}
+save();render();
+}
+function del(n){
+history.unshift(`${new Date().toLocaleString()} Deleted ${inventory[n].name}`);
+inventory.splice(n,1);
+save();render();
+}
+
+function historyDiv(){
+historyBox.innerHTML=history.slice(0,20).join("<br>");
+}
+
+function exportCSV(){
+let csv="Item,Qty,Limit\n";
+inventory.forEach(i=>csv+=`${i.name},${i.qty},${i.limit}\n`);
+let a=document.createElement("a");
+a.href="data:text/csv;charset=utf-8,"+encodeURIComponent(csv);
+a.download="spati_inventory.csv";
+a.click();
+}
+
+render();
+</script>
+
+</body>
+</html>
